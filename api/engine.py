@@ -16,8 +16,17 @@ GROQ_API_KEYS = [
 # Filter out None values
 GROQ_API_KEYS = [key for key in GROQ_API_KEYS if key]
 
+# Backward compatibility: if no numbered keys, use the original GROQ_API_KEY
 if not GROQ_API_KEYS:
-    raise RuntimeError("At least one GROQ_API_KEY is required. Add GROQ_API_KEY_1, GROQ_API_KEY_2, or GROQ_API_KEY_3 in environment variables.")
+    original_key = os.getenv("GROQ_API_KEY")
+    if original_key:
+        GROQ_API_KEYS = [original_key]
+        print(f"[DEBUG] Using legacy GROQ_API_KEY for backward compatibility")
+
+print(f"[DEBUG] Loaded {len(GROQ_API_KEYS)} Groq API keys")
+
+if not GROQ_API_KEYS:
+    raise RuntimeError("At least one GROQ_API_KEY is required. Add GROQ_API_KEY_1, GROQ_API_KEY_2, GROQ_API_KEY_3, or GROQ_API_KEY in environment variables.")
 
 def generate_response(query):
     # --- STEP 0: STATELESS GUARDRAILS ---
@@ -70,11 +79,25 @@ def generate_response(query):
             break
             
         except Exception as e:
+            error_str = str(e).lower()
             last_error = e
-            print(f"[ERROR] Groq API Key {attempt} failed: {repr(e)}")
-            if attempt < len(GROQ_API_KEYS):
-                print(f"[DEBUG] Trying next API key...")
-            continue
+            
+            # Check if it's a rate limit error - these should try next key
+            if "rate limit" in error_str or "429" in error_str:
+                print(f"[ERROR] Groq API Key {attempt} rate limited: {repr(e)}")
+                if attempt < len(GROQ_API_KEYS):
+                    print(f"[DEBUG] Trying next API key...")
+                    continue
+                else:
+                    print(f"[ERROR] All API keys rate limited")
+            else:
+                # Other errors (invalid key, network issues, etc.) - try next key
+                print(f"[ERROR] Groq API Key {attempt} failed (non-rate-limit): {repr(e)}")
+                if attempt < len(GROQ_API_KEYS):
+                    print(f"[DEBUG] Trying next API key...")
+                    continue
+                else:
+                    print(f"[ERROR] All API keys failed with errors")
 
     if answer is None:
         print(f"[ERROR] All Groq API keys failed. Last error: {repr(last_error)}")
