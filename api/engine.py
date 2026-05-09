@@ -1,26 +1,23 @@
 import os
-import google.generativeai as genai
+from groq import Groq
 from rag.retriever import retrieve
 from rag.prompt import SYSTEM_PROMPT
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Multiple Gemini API Keys with Failover
-GEMINI_API_KEYS = [
-    os.getenv("GEMINI_API_KEY_1"),
-    os.getenv("GEMINI_API_KEY_2"),
-    os.getenv("GEMINI_API_KEY_3")
+# Configure Multiple Groq API Keys with Failover
+GROQ_API_KEYS = [
+    os.getenv("GROQ_API_KEY_1"),
+    os.getenv("GROQ_API_KEY_2"),
+    os.getenv("GROQ_API_KEY_3")
 ]
 
 # Filter out None values
-GEMINI_API_KEYS = [key for key in GEMINI_API_KEYS if key]
+GROQ_API_KEYS = [key for key in GROQ_API_KEYS if key]
 
-if not GEMINI_API_KEYS:
-    raise RuntimeError("At least one GEMINI_API_KEY is required. Add GEMINI_API_KEY_1, GEMINI_API_KEY_2, or GEMINI_API_KEY_3 in environment variables.")
-
-# Initialize Gemini with the first available key
-genai.configure(api_key=GEMINI_API_KEYS[0])
+if not GROQ_API_KEYS:
+    raise RuntimeError("At least one GROQ_API_KEY is required. Add GROQ_API_KEY_1, GROQ_API_KEY_2, or GROQ_API_KEY_3 in environment variables.")
 
 def generate_response(query):
     # --- STEP 0: STATELESS GUARDRAILS ---
@@ -42,48 +39,45 @@ def generate_response(query):
         print(f"[DEBUG] Retrieval failed: {e}")
         context = "" 
 
-    # Step 2: Generation (Gemini with Failover)
+    # Step 2: Generation (Groq with Failover)
     user_message = f"Context:\n{context}\n\nUser Question: {query}" if context.strip() else f"(No context found)\n\nUser Question: {query}"
 
     answer = None
     last_error = None
 
     # Try each API key in sequence
-    for attempt, api_key in enumerate(GEMINI_API_KEYS, 1):
+    for attempt, api_key in enumerate(GROQ_API_KEYS, 1):
         try:
-            print(f"[DEBUG] Attempting Gemini (API Key {attempt}/{len(GEMINI_API_KEYS)})...")
+            print(f"[DEBUG] Attempting Groq (API Key {attempt}/{len(GROQ_API_KEYS)})...")
             
-            # Configure with the current API key
-            genai.configure(api_key=api_key)
+            # Create a Groq client with the current API key
+            groq_client = Groq(api_key=api_key)
             
-            # Create a model instance
-            model = genai.GenerativeModel('gemini-pro')
-            
-            # Create the full prompt with system instructions
-            full_prompt = f"{SYSTEM_PROMPT}\n\n{user_message}"
-            
-            # Generate response
-            response = model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=200,
-                )
+            # Call the API
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message}
+                ],
+                model="llama-3.3-70b-versatile",
+                timeout=15.0, 
+                temperature=0.1,
+                max_tokens=200 
             )
             
-            answer = response.text.strip()
+            answer = chat_completion.choices[0].message.content.strip()
             print(f"[DEBUG] Successfully generated response using API Key {attempt}")
             break
             
         except Exception as e:
             last_error = e
-            print(f"[ERROR] Gemini API Key {attempt} failed: {repr(e)}")
-            if attempt < len(GEMINI_API_KEYS):
+            print(f"[ERROR] Groq API Key {attempt} failed: {repr(e)}")
+            if attempt < len(GROQ_API_KEYS):
                 print(f"[DEBUG] Trying next API key...")
             continue
 
     if answer is None:
-        print(f"[ERROR] All Gemini API keys failed. Last error: {repr(last_error)}")
+        print(f"[ERROR] All Groq API keys failed. Last error: {repr(last_error)}")
         return "I'm having trouble connecting to our AI system right now. Please try again in a moment."
 
     # --- STEP 3: POST-PROCESSING (Cleanup) ---
