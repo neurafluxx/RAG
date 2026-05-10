@@ -71,7 +71,7 @@ def generate_response(query):
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.1,
-                    max_output_tokens=500,
+                    max_output_tokens=300,  # Leave buffer for sentence completion
                 )
             )
             
@@ -107,9 +107,27 @@ def generate_response(query):
     # --- STEP 3: POST-PROCESSING (Cleanup) ---
     final_answer = answer.replace("- ", "").replace("* ", "").replace("Certainly,", "").replace("Absolutely,", "")
     
-    if final_answer and final_answer[-1] not in ['.', '!', '?']:
-        last_period = final_answer.rfind('.')
-        if last_period != -1:
-            final_answer = final_answer[:last_period + 1]
-
+    # Ensure response ends with complete sentence within token limit
+    if final_answer:
+        # Check if response ends with sentence-ending punctuation
+        if final_answer[-1] in ['.', '!', '?']:
+            # Response is already complete
+            pass
+        else:
+            # Find the last complete sentence
+            last_period = final_answer.rfind('.')
+            last_exclamation = final_answer.rfind('!')
+            last_question = final_answer.rfind('?')
+            
+            # Get the position of the last sentence-ending punctuation
+            last_punct_pos = max(last_period, last_exclamation, last_question)
+            
+            if last_punct_pos != -1:
+                # Cut off at the last complete sentence
+                final_answer = final_answer[:last_punct_pos + 1]
+            else:
+                # No complete sentence found, add a period if the response is reasonably long
+                if len(final_answer.strip()) > 10:
+                    final_answer = final_answer.rstrip() + "."
+    
     return final_answer.strip()
