@@ -67,7 +67,7 @@ def generate_response(query):
             
             # Generate response using the new google.genai API
             response = client.models.generate_content(
-                model="gemini-1.5-pro",
+                model="gemini-2.0-flash-exp",
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.1,
