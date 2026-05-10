@@ -5,6 +5,6 @@ chromadb
 # sentence-transformers is NOT needed on Railway — the vector DB is pre-built
 # and ChromaDB uses its own lightweight ONNX runtime for query embedding.
 # Only needed locally when re-running ingest/ingest.py to rebuild the DB.
-google-generativeai
+google-genai
 python-dotenv
 pydantic

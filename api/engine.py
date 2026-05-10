@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+import google.genai as genai
 from rag.retriever import retrieve
 from rag.prompt import SYSTEM_PROMPT
 from dotenv import load_dotenv
@@ -59,19 +59,17 @@ def generate_response(query):
         try:
             print(f"[DEBUG] Attempting Gemini (API Key {attempt}/{len(GEMINI_API_KEYS)})...")
             
-            # Configure with the current API key
-            genai.configure(api_key=api_key)
-            
-            # Create a model instance
-            model = genai.GenerativeModel('gemini-1.5-pro')
+            # Create a Gemini client with the current API key
+            client = genai.Client(api_key=api_key)
             
             # Create the full prompt with system instructions
             full_prompt = f"{SYSTEM_PROMPT}\n\n{user_message}"
             
-            # Generate response
-            response = model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
+            # Generate response using the new google.genai API
+            response = client.models.generate_content(
+                model="gemini-1.5-pro",
+                contents=full_prompt,
+                config=genai.types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=200,
                 )
