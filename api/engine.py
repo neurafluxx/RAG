@@ -63,7 +63,7 @@ def generate_response(query):
             genai.configure(api_key=api_key)
             
             # Create a model instance
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-1.5-pro')
             
             # Create the full prompt with system instructions
             full_prompt = f"{SYSTEM_PROMPT}\n\n{user_message}"
