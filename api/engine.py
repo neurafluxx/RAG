@@ -71,7 +71,7 @@ def generate_response(query):
                 contents=full_prompt,
                 config=genai.types.GenerateContentConfig(
                     temperature=0.1,
-                    max_output_tokens=300,  # Leave buffer for sentence completion
+                    max_output_tokens=500,  # Leave buffer for sentence completion
                 )
             )
             
