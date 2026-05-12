@@ -30,7 +30,7 @@ app.add_middleware(
 )
 
 # Thread pool for async execution
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=10)
 
 # Request model
 class ChatRequest(BaseModel):
